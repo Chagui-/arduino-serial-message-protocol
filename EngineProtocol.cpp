@@ -3,7 +3,7 @@
 #include "arduino.h"
 #include "MessageBuilder.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 Engine::Engine(int serial_baud, char address[4]):
 	m_serial_baud(serial_baud),m_current_time(0),

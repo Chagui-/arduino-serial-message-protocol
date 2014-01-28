@@ -18,7 +18,7 @@ public:
 			delta += 1000000;
 		}
 		if (delta >= m_timeout){
-			Serial.println("timeout");
+			//Serial.println("timeout");
 			return true;
 		}
 		return false;
