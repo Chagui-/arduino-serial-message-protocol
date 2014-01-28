@@ -60,8 +60,8 @@ void loop(){
 	if (debug_send_message == false && msg_pin == LOW){
 		engine.sendMessage(mb.getMessage());
 		debug_send_message = true;
-		Serial.print("Ram free: ");
-		Serial.println(freeRam());
+		//Serial.print("Ram free: ");
+		//Serial.println(freeRam());
 	}
 	if (msg_pin == HIGH){
 		debug_send_message = false;

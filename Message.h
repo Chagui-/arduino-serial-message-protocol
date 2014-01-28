@@ -15,7 +15,7 @@ public:
 	inline bool isTimeout(long current_time){
 		long delta = (current_time - m_time_start);
 		if (delta < 0){
-			delta += 1000000;
+			delta += 0xffff;
 		}
 		if (delta >= m_timeout){
 			//Serial.println("timeout");

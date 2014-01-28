@@ -23,7 +23,7 @@ void Engine::setup(){
 }
 
 void Engine::run(){
-	m_current_time = millis() % 1000000;
+	m_current_time = millis();
 
 	readComm0();
 	readComm1();
