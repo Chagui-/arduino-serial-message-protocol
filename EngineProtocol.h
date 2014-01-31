@@ -19,15 +19,12 @@ private:
 	SoftwareSerial* m_comm_2;
 	char m_response_1[response_length + 1];
 	int m_response_1_current_byte;
-	char m_response_2[response_length + 1];
-	int m_response_2_current_byte;
 	//process commands
 	void (*m_processMessage)(char flags, String address_from, char type,char sub_type,String data);
 
 	void blinckLed();
 	void readComm0();
 	void readComm1();
-	void readComm2();
 	void processSerialCommand(String command, uint8_t from_comm_port);
 	void sendACK(String message, uint8_t to_comm_port);
 
@@ -48,12 +45,8 @@ public:
 	Engine(int serial_baud, char address[4]);
 	~Engine(void){}
 	
-	inline void setCommPort1(SoftwareSerial& comm_1){
-		*m_comm_1 = comm_1;
-	}
-
-	inline void setCommPort2(SoftwareSerial& comm_2){
-		*m_comm_2 = comm_2;
+	inline void setVirtualCommPort(SoftwareSerial* comm_1){
+		m_comm_1 = comm_1;
 	}
 
 	void transmitMessage(String message, uint8_t from_comm_port);

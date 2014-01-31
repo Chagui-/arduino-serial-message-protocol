@@ -8,10 +8,9 @@
 Engine::Engine(int serial_baud, char address[4]):
 	m_serial_baud(serial_baud),m_current_time(0),
 	m_last_time(0),	m_response_0_current_byte(0),
-	m_response_1_current_byte(0),m_response_2_current_byte(0){
+	m_response_1_current_byte(0){
 	m_response_0[response_length] = '\0';
 	m_response_1[response_length] = '\0';
-	m_response_2[response_length] = '\0';
 	m_comm_1 = NULL;
 	m_comm_2 = NULL;
 	m_address = address;
@@ -27,7 +26,7 @@ void Engine::run(){
 
 	readComm0();
 	readComm1();
-	readComm2();
+	//readComm2();
 
 	checkForResend(m_current_time);
 	
@@ -77,21 +76,6 @@ void Engine::readComm1(){
 	}
 }
 
-void Engine::readComm2(){
-	if (m_comm_2 == NULL) return;
-	
-	m_comm_2->listen();
-	while (m_comm_2->available() > 0){
-		//get current byte	
-		char code = addToBuffer(m_comm_2->read(),2);
-		if (code == 1){
-			continue;
-		}else if (code == 2){
-			break;
-		}
-	}
-}
-
 char Engine::addToBuffer(char byte,uint8_t comm_port){
 	//codes
 	// 0 = normal
@@ -105,9 +89,6 @@ char Engine::addToBuffer(char byte,uint8_t comm_port){
 	} else if (comm_port == 1){
 		buffer = m_response_1;
 		index = &m_response_1_current_byte;
-	} else if (comm_port == 2){
-		buffer = m_response_2;
-		index = &m_response_2_current_byte;
 	}
 	buffer[*index] = byte;	
 	//Serial.print(byte);
@@ -179,6 +160,7 @@ void Engine::processSerialCommand(String command, uint8_t from_comm_port){
 	}else {//for others. Transmit.
 		transmitMessage(command,from_comm_port);
 	}
+	//transmitMessage(command,from_comm_port);
 }
 
 void Engine::ACKArrived(String message){
@@ -233,6 +215,8 @@ void Engine::sendACK(String message, uint8_t to_comm_port){
 	MessageBuilder::setFlags(message,FLAG_ACK);
 	MessageBuilder::invertAddress(message);
 	MessageBuilder::setChecksum(message);
+	m_comm_1->print("ACK sent: ");
+	m_comm_1->println(message);
 	switch (to_comm_port)	{
 	case 0:
 		Serial.print(message);
