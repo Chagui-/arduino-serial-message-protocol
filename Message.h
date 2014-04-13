@@ -12,7 +12,7 @@ private:
 
 public:
 
-	inline bool isTimeout(long current_time){
+	bool isTimeout(long current_time){
 		long delta = (current_time - m_time_start);
 		if (delta < 0){
 			delta += 0xffff;
@@ -24,16 +24,16 @@ public:
 		return false;
 	}
 
-	inline char getResendAttempts(){
+	char getResendAttempts(){
 		return m_resend_attempts;
 	}
 
-	inline void attemptResend(long time_start){
+	void attemptResend(long time_start){
 		m_time_start = time_start;
 		++m_resend_attempts;
 	}
 
-	inline void setMessage(String message, long time_start, long timeout){
+	void setMessage(String message, long time_start, long timeout){
 		m_message = message;
 		m_time_start = time_start;
 		m_timeout = timeout;
@@ -41,7 +41,7 @@ public:
 		m_null = false;
 	}
 
-	inline bool validate(String m){
+	bool validate(String m){
 		char flags;
 		String address_from;
 		String address_to;
@@ -64,23 +64,23 @@ public:
 		return false;
 	}
 
-	inline void eraseMessage(){
+	void eraseMessage(){
 		m_null = true;
 		m_resend_attempts = 0;
 		m_flags = 0;
 	}
 	
-	inline bool isNull(){
+	bool isNull(){
 		return m_null;
 	}
 
-	inline bool hasFlag(char flag){
+	bool hasFlag(char flag){
 		if (m_flags & flag == 1)
 			return true;
 		return false;
 	}
 
-	inline String getMessage(){
+	String getMessage(){
 		return m_message;
 	}
 

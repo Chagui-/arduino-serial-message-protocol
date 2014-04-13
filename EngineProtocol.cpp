@@ -5,20 +5,28 @@
 
 #define DEBUG 0
 
-Engine::Engine(int serial_baud, char address[4]):
-	m_serial_baud(serial_baud),m_current_time(0),
+Engine::Engine(char address[4]):
+	m_current_time(0),
 	m_last_time(0),	m_response_0_current_byte(0),
-	m_response_1_current_byte(0){
+	m_response_1_current_byte(0), m_comms_enabled(0)
+#ifdef __AVR_ATmega1280__
+	,m_response_2_current_byte(0),m_response_3_current_byte(0),
+	m_response_4_current_byte(0){
+	m_response_2[response_length] = '\0';
+	m_response_3[response_length] = '\0';
+	m_response_4[response_length] = '\0';
+#else
+{
+#endif // __AVR_ATmega1280__
 	m_response_0[response_length] = '\0';
 	m_response_1[response_length] = '\0';
+
 	m_comm_1 = NULL;
-	m_comm_2 = NULL;
 	m_address = address;
 }
 
 void Engine::setup(){          
 	delay(1000);
-	Serial.begin(m_serial_baud);
 }
 
 void Engine::run(){
@@ -26,7 +34,12 @@ void Engine::run(){
 
 	readComm0();
 	readComm1();
-	//readComm2();
+	
+#ifdef __AVR_ATmega1280__
+	readComm2();
+	readComm3();
+	readComm4();
+#endif //__AVR_ATmega1280__
 
 	checkForResend(m_current_time);
 	
@@ -50,6 +63,7 @@ void Engine::checkForResend(long time){
 }
 
 void Engine::readComm0(){
+	if (isCommEnabled(COMM_HARDWARE_0) == false) return;
 	while (Serial.available() > 0){
 		//get current byte
 		char code = addToBuffer(Serial.read(),0);
@@ -60,6 +74,53 @@ void Engine::readComm0(){
 		}
 	}
 }
+
+
+bool Engine::isCommEnabled(uint8_t flag_serial_comm){
+	return (m_comms_enabled & flag_serial_comm) != 0;
+}
+
+#ifdef __AVR_ATmega1280__
+
+void Engine::readComm2(){
+	if (isCommEnabled(COMM_HARDWARE_1) == false) return;
+	while (Serial1.available() > 0){
+		//get current byte
+		char code = addToBuffer(Serial1.read(),2);
+		if (code == 1){
+			continue;
+		}else if (code == 2){
+			break;
+		}
+	}
+}
+
+void Engine::readComm3(){
+	if (isCommEnabled(COMM_HARDWARE_2) == false) return;
+	while (Serial2.available() > 0){
+		//get current byte
+		char code = addToBuffer(Serial2.read(),3);
+		if (code == 1){
+			continue;
+		}else if (code == 2){
+			break;
+		}
+	}
+}
+
+void Engine::readComm4(){
+	if (isCommEnabled(COMM_HARDWARE_3) == false) return;
+	while (Serial3.available() > 0){
+		//get current byte
+		char code = addToBuffer(Serial3.read(),4);
+		if (code == 1){
+			continue;
+		}else if (code == 2){
+			break;
+		}
+	}
+}
+#endif // __AVR_ATmega1280__
 
 void Engine::readComm1(){
 	if (m_comm_1 == NULL) return;
@@ -83,12 +144,31 @@ char Engine::addToBuffer(char byte,uint8_t comm_port){
 	// 2 = break 
 	char* buffer;
 	int* index;
-	if (comm_port == 0){
+	switch (comm_port){
+	case 0:
 		buffer = m_response_0;
 		index = &m_response_0_current_byte;
-	} else if (comm_port == 1){
+		break;
+	case 1:
 		buffer = m_response_1;
 		index = &m_response_1_current_byte;
+		break;
+#ifdef __AVR_ATmega1280__
+	case 2:
+		buffer = m_response_2;
+		index = &m_response_2_current_byte;
+		break;
+	case 3:
+		buffer = m_response_3;
+		index = &m_response_3_current_byte;
+		break;
+	case 4:
+		buffer = m_response_4;
+		index = &m_response_4_current_byte;
+		break;
+#endif // __AVR_ATmega1280__
+	default:
+		return 2;
 	}
 	buffer[*index] = byte;	
 	//Serial.print(byte);
@@ -174,26 +254,43 @@ void Engine::ACKArrived(String message){
 }
 
 void Engine::resend(String m){
-	if (m_comm_1){
+	if (m_comm_1){//virtual
 		m_comm_1->print(m);
 	}
-	if (m_comm_2){
-		m_comm_2->print(m);
-	}
-	Serial.print(m);
+
+	if (isCommEnabled(COMM_HARDWARE_0))
+		Serial.print(m);
+
+#ifdef __AVR_ATmega1280__
+	if (isCommEnabled(COMM_HARDWARE_1))
+		Serial1.print(m);
+	if (isCommEnabled(COMM_HARDWARE_2))
+		Serial2.print(m);
+	if (isCommEnabled(COMM_HARDWARE_3))
+		Serial3.print(m);
+#endif // __AVR_ATmega1280__	
 }
 
 void Engine::sendMessage(String m){
 	if ((MessageBuilder::decodeFlags(m) & FLAG_IMPORTANT) != 0){
 		enqueMessage(m);
 	}
-	if (m_comm_1){
+
+	if (m_comm_1){//virtual
 		m_comm_1->print(m);
 	}
-	if (m_comm_2){
-		m_comm_2->print(m);
-	}
-	Serial.print(m);
+	
+	if (isCommEnabled(COMM_HARDWARE_0))
+		Serial.print(m);
+
+#ifdef __AVR_ATmega1280__
+	if (isCommEnabled(COMM_HARDWARE_1))
+		Serial1.print(m);
+	if (isCommEnabled(COMM_HARDWARE_2))
+		Serial2.print(m);
+	if (isCommEnabled(COMM_HARDWARE_3))
+		Serial3.print(m);
+#endif // __AVR_ATmega1280__	
 }
 
 bool Engine::enqueMessage(String m){
@@ -215,18 +312,33 @@ void Engine::sendACK(String message, uint8_t to_comm_port){
 	MessageBuilder::setFlags(message,FLAG_ACK);
 	MessageBuilder::invertAddress(message);
 	MessageBuilder::setChecksum(message);
-	m_comm_1->print("ACK sent: ");
-	m_comm_1->println(message);
+	if (m_comm_1){
+		m_comm_1->print("ACK sent: ");
+		m_comm_1->println(message);
+	}
 	switch (to_comm_port)	{
 	case 0:
-		Serial.print(message);
+		if (isCommEnabled(COMM_HARDWARE_0))
+			Serial.print(message);
 		break;
 	case 1:
-		m_comm_1->print(message);
+		if (m_comm_1)
+			m_comm_1->print(message);
 		break;
+#ifdef __AVR_ATmega1280__		
 	case 2:
-		m_comm_2->print(message);
+		if (isCommEnabled(COMM_HARDWARE_1))
+			Serial1.print(message);
 		break;
+	case 3:
+		if (isCommEnabled(COMM_HARDWARE_2))
+			Serial2.print(message);
+		break;
+	case 4:
+		if (isCommEnabled(COMM_HARDWARE_3))
+			Serial3.print(message);
+		break;
+#endif // __AVR_ATmega1280__	
 	default:
 		break;
 	}
@@ -237,20 +349,59 @@ void Engine::transmitMessage(String message, uint8_t from_comm_port){
 	case 0:
 		if (m_comm_1)
 			m_comm_1->print(message);
-		if (m_comm_2)
-			m_comm_2->print(message);
+#ifdef __AVR_ATmega1280__
+		if (isCommEnabled(COMM_HARDWARE_1))
+			Serial1.print(message);
+		if (isCommEnabled(COMM_HARDWARE_2))
+			Serial2.print(message);
+		if (isCommEnabled(COMM_HARDWARE_3))
+			Serial3.print(message);
+#endif // __AVR_ATmega1280__
 		break;
 	case 1:
-		Serial.print(message);
-		if (m_comm_2)
-			m_comm_2->print(message);
+		if (isCommEnabled(COMM_HARDWARE_0))
+			Serial.print(message);
+#ifdef __AVR_ATmega1280__
+		if (isCommEnabled(COMM_HARDWARE_1))
+			Serial1.print(message);
+		if (isCommEnabled(COMM_HARDWARE_2))
+			Serial2.print(message);
+		if (isCommEnabled(COMM_HARDWARE_3))
+			Serial3.print(message);
+#endif // __AVR_ATmega1280__
 		break;
-
+#ifdef __AVR_ATmega1280__		
 	case 2:
-		Serial.print(message);
 		if (m_comm_1)
 			m_comm_1->print(message);
+		if (isCommEnabled(COMM_HARDWARE_0))
+			Serial.print(message);
+		if (isCommEnabled(COMM_HARDWARE_2))
+			Serial2.print(message);
+		if (isCommEnabled(COMM_HARDWARE_3))
+			Serial3.print(message);
 		break;
+	case 3:
+		if (m_comm_1)
+			m_comm_1->print(message);
+		if (isCommEnabled(COMM_HARDWARE_1))
+			Serial1.print(message);
+		if (isCommEnabled(COMM_HARDWARE_0))
+			Serial.print(message);
+		if (isCommEnabled(COMM_HARDWARE_3))
+			Serial3.print(message);
+		break;
+	case 4:
+		if (m_comm_1)
+			m_comm_1->print(message);
+		if (isCommEnabled(COMM_HARDWARE_1))
+			Serial1.print(message);
+		if (isCommEnabled(COMM_HARDWARE_2))
+			Serial2.print(message);
+		if (isCommEnabled(COMM_HARDWARE_0))
+			Serial.print(message);
+		break;
+#endif // __AVR_ATmega1280__
 	default:
 		break;
 	}
