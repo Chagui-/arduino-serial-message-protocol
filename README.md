@@ -78,3 +78,22 @@ void constructMessage(){
 }
 ```
 To send the message you only use `engine.sendMessage(mb.getMessage())`
+
+The library can have a secondary virtual serial port:
+
+```c
+#include "SoftwareSerial.h"
+#define BAUD_RATE 28800
+
+#define NETWORK_1_RX_PIN 11
+#define NETWORK_1_TX_PIN 6
+#define NETWORK_1_BAUD BAUD_RATE
+
+SoftwareSerial network_1(NETWORK_1_RX_PIN,NETWORK_1_TX_PIN);
+
+void setup(){
+	network_1.begin(NETWORK_1_BAUD);
+	engine.setVirtualCommPort(&network_1);// set optional virtual serial port
+}
+
+```
